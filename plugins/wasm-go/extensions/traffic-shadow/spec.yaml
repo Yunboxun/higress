@@ -1,0 +1,68 @@
+# @Title 流量拷贝 (Traffic Shadow)
+# @Description 用于将请求流量异步拷贝（镜像）到指定的后端服务。
+serviceSource:
+  title: 服务来源
+  description: 拷贝目标服务的来源，支持 k8s, nacos, ip, dns
+  type: string
+  enum:
+    - k8s
+    - nacos
+    - ip
+    - dns
+  default: dns
+  required: true
+serviceName:
+  title: 服务名称
+  description: 拷贝目标服务的名称
+  type: string
+  required: true
+servicePort:
+  title: 服务端口
+  description: 拷贝目标服务的端口
+  type: number
+  required: true
+namespace:
+  title: 命名空间
+  description: 拷贝目标服务所在的命名空间（适用于 k8s 和 nacos）
+  type: string
+  default: default
+domain:
+  title: 域名
+  description: 拷贝目标服务的域名（适用于 dns）
+  type: string
+requestPath:
+  title: 请求路径
+  description: 拷贝请求的路径。如果不填，则使用原始请求的路径
+  type: string
+percentage:
+  title: 采样率
+  description: 流量拷贝的采样率，范围 0-100。例如 50 表示拷贝 50% 的流量
+  type: number
+  default: 100
+  minimum: 0
+  maximum: 100
+withBody:
+  title: 拷贝请求体
+  description: 是否拷贝请求 Body。注意：开启此选项会增加内存消耗
+  type: boolean
+  default: false
+maxBodyBytes:
+  title: 最大请求体大小
+  description: 允许拷贝的最大 Body 大小（字节），默认 1MB。仅在开启拷贝请求体时生效
+  type: number
+  default: 1048576
+modelOverride:
+  title: 覆盖模型名称
+  description: 仅在开启拷贝请求体且请求体为 JSON 时生效。用于强制覆盖拷贝请求体中的 model 字段值
+  type: string
+shadowTimeout:
+  title: Shadow 超时时间
+  description: Shadow 请求的超时时间（毫秒）。默认 600000（600 秒）。对于模型推理等耗时较长的场景需设置较大值
+  type: number
+  default: 600000
+headersToAdd:
+  title: 添加请求头
+  description: 拷贝请求中需要额外添加的 Header
+  type: object
+  additionalProperties:
+    type: string
