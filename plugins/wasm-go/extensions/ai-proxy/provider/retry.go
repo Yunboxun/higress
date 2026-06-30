@@ -8,7 +8,6 @@ import (
 
 	"github.com/alibaba/higress/plugins/wasm-go/extensions/ai-proxy/util"
 	"github.com/higress-group/proxy-wasm-go-sdk/proxywasm"
-	"github.com/higress-group/proxy-wasm-go-sdk/proxywasm/types"
 	"github.com/higress-group/wasm-go/pkg/log"
 	"github.com/higress-group/wasm-go/pkg/wrapper"
 	"github.com/tidwall/gjson"
@@ -27,9 +26,6 @@ type retryOnFailure struct {
 	retryTimeout int64 `required:"false" yaml:"retryTimeout" json:"retryTimeout"`
 	// @Title zh-CN 需要进行重试的原始请求的状态码，支持正则表达式匹配
 	retryOnStatus []string `required:"false" yaml:"retryOnStatus" json:"retryOnStatus"`
-	// @Title zh-CN 首字超时重试
-	// @Description zh-CN 当配置了 firstByteTimeout 且触发首字超时时，是否自动进行重试。默认为 false
-	retryOnFirstByteTimeout bool `required:"false" yaml:"retryOnFirstByteTimeout" json:"retryOnFirstByteTimeout"`
 }
 
 func (r *retryOnFailure) FromJson(json gjson.Result) {
@@ -49,43 +45,10 @@ func (r *retryOnFailure) FromJson(json gjson.Result) {
 	if len(r.retryOnStatus) == 0 {
 		r.retryOnStatus = []string{"4.*", "5.*"}
 	}
-	r.retryOnFirstByteTimeout = json.Get("retryOnFirstByteTimeout").Bool()
 }
 
 func (c *ProviderConfig) IsRetryOnFailureEnabled() bool {
 	return c.retryOnFailure.enabled
-}
-
-// IsFirstByteTimeoutRetryEnabled returns true if the plugin should retry when
-// the upstream first-byte-timeout (set via x-envoy-upstream-rq-first-byte-timeout-ms)
-// fires. This requires both retryOnFailure.enabled and retryOnFirstByteTimeout to be true,
-// and firstByteTimeout to be configured.
-func (c *ProviderConfig) IsFirstByteTimeoutRetryEnabled() bool {
-	return c.retryOnFailure != nil && c.retryOnFailure.enabled &&
-		c.retryOnFailure.retryOnFirstByteTimeout && c.firstByteTimeout > 0
-}
-
-// OnFirstByteTimeout handles the first-byte-timeout scenario by triggering a retry.
-// It is called from the response headers handler when the response is not from upstream
-// and the code_details indicates a timeout.
-func (c *ProviderConfig) OnFirstByteTimeout(activeProvider Provider, ctx wrapper.HttpContext, apiTokenInUse string, apiTokens []string) types.Action {
-	if !c.IsFirstByteTimeoutRetryEnabled() {
-		return types.ActionContinue
-	}
-
-	log.Warnf("first byte timeout detected, triggering retry for provider=%s", activeProvider.GetProviderType())
-
-	if c.isFailoverEnabled() {
-		log.Warnf("apiToken:%s first byte timeout, marking for failover", apiTokenInUse)
-		c.handleUnavailableApiToken(ctx, apiTokenInUse)
-	}
-
-	err := c.retryFailedRequest(activeProvider, ctx, apiTokenInUse, apiTokens)
-	if err != nil {
-		log.Errorf("first byte timeout retry failed, err:%v", err)
-		return types.ActionContinue
-	}
-	return types.HeaderStopAllIterationAndWatermark
 }
 
 func (c *ProviderConfig) retryFailedRequest(activeProvider Provider, ctx wrapper.HttpContext, apiTokenInUse string, apiTokens []string) error {
