@@ -1,0 +1,61 @@
+# 外网 Ingress 示例（需与 McpBridge 中注册的外网 DNS 服务配合）：
+#
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: ai-external-openai
+#   namespace: higress-system
+#   annotations:
+#     higress.io/match-header-x-higress-llm-provider: openai
+# spec:
+#   ingressClassName: higress
+#   rules:
+#     - host: ai-route-downstream.internal
+#       http:
+#         paths:
+#           - path: /
+#             pathType: Prefix
+#             backend:
+#               service:
+#                 name: openai-external.dns
+#                 port:
+#                   number: 443
+#
+# 上述 Ingress 需挂载 ai-proxy WasmPlugin，由 ai-proxy 完成对外网 API 的实际调用。
+---
+apiVersion: extensions.higress.io/v1alpha1
+kind: WasmPlugin
+metadata:
+  name: hbox-ai-request-router
+  namespace: higress-system
+spec:
+  priority: 520
+  url: oci://<your_registry>/hbox-ai-request-router:v0.1.0
+  defaultConfig:
+    enabled: true
+    enableOnPathSuffix:
+      - /completions
+      - /messages
+    externalRouting:
+      providerHeader: x-higress-llm-provider
+      modelHeader: x-higress-llm-model
+      provider: openai
+      model: gpt-4o
+      rewriteBodyModel: true
+      modelKey: model
+    tokenThreshold:
+      enabled: true
+      threshold: 8000
+      mode: heuristic
+      heuristic:
+        charsPerToken: 4
+    headerRules:
+      - source: header
+        key: x-api-key
+        matchType: exact
+        values:
+          - external-key-001
+      - source: authorization
+        matchType: prefix
+        values:
+          - sk-ext-

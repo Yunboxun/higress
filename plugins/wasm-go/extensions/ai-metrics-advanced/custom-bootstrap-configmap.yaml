@@ -1,0 +1,79 @@
+# Higress Gateway 自定义 Histogram 分桶边界
+# 用途：覆盖 Envoy 默认 Histogram 桶，提升 histogram_quantile P95 精度
+#
+# 使用方式：
+#   1. kubectl apply -f custom-bootstrap-configmap.yaml
+#   2. 在 higress-gateway Deployment 中添加环境变量和挂载（见下方说明）
+#   3. 重启 Gateway Pod
+#
+# Deployment 修改（kubectl -n higress-system edit deployment higress-gateway）：
+#
+#   容器 env 加：
+#     - name: ISTIO_BOOTSTRAP_OVERRIDE
+#       value: /etc/istio/custom-bootstrap/custom_bootstrap.json
+#
+#   容器 volumeMounts 加：
+#     - mountPath: /etc/istio/custom-bootstrap
+#       name: custom-bootstrap-volume
+#
+#   volumes 加：
+#     - configMap:
+#         defaultMode: 420
+#         name: higress-custom-bootstrap
+#       name: custom-bootstrap-volume
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: higress-custom-bootstrap
+  namespace: higress-system
+data:
+  custom_bootstrap.json: |
+    {
+      "stats_config": {
+        "histogram_bucket_settings": [
+          {
+            "match": {
+              "prefix": "wasmcustom"
+            },
+            "buckets": [
+              50.0,
+              100.0,
+              150.0,
+              200.0,
+              300.0,
+              400.0,
+              500.0,
+              700.0,
+              1000.0,
+              1200.0,
+              1500.0,
+              1800.0,
+              2000.0,
+              2500.0,
+              3000.0,
+              3500.0,
+              4000.0,
+              5000.0,
+              6000.0,
+              7000.0,
+              8000.0,
+              10000.0,
+              12000.0,
+              15000.0,
+              20000.0,
+              30000.0,
+              45000.0,
+              60000.0,
+              90000.0,
+              120000.0,
+              180000.0,
+              300000.0,
+              420000.0,
+              600000.0,
+              720000.0
+            ]
+          }
+        ]
+      }
+    }

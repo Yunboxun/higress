@@ -1,0 +1,45 @@
+apiVersion: extensions.higress.io/v1alpha1
+kind: WasmPlugin
+metadata:
+  annotations:
+    higress.io/wasm-plugin-description: 在 Higress 访问日志中记录 HTTP 请求头、请求体、响应头和响应体
+    higress.io/wasm-plugin-title: Log Request Response
+  labels:
+    higress.io/resource-definer: higress
+    higress.io/wasm-plugin-built-in: 'false'
+    higress.io/wasm-plugin-category: custom
+    higress.io/wasm-plugin-name: log-request-response
+    higress.io/wasm-plugin-version: 1.0.0
+  name: log-request-response
+  namespace: higress-system
+spec:
+  # 全局默认配置（对所有路由生效）
+  defaultConfig:
+    request:
+      headers:
+        enabled: true
+      body:
+        enabled: true
+        maxSize: 10240
+        contentTypes:
+          - application/json
+          - application/xml
+          - application/x-www-form-urlencoded
+          - text/plain
+    response:
+      headers:
+        enabled: true
+      body:
+        enabled: true
+        maxSize: 10240
+        contentTypes:
+          - application/json
+          - application/xml
+          - text/plain
+          - text/html
+  # 默认不禁用（全局生效）
+  defaultConfigDisable: false
+  phase: STATS
+  priority: 200
+  # 与 makefile 中 FULL_IMAGE 保持一致，格式：oci://IMAGE_REGISTRY/IMAGE_REPO:IMAGE_TAG
+  url: oci://harbor.qihoo.net/intelligent-egineering-hbox2/higress/plugins/custom/log-request-response:v1.0.0
